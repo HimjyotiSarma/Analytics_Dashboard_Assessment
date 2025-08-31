@@ -1,12 +1,12 @@
 'use client'
 
-import { startTransition, useActionState, useEffect, useState } from 'react'
+import { useState } from 'react'
 import Papa from 'papaparse'
 import { useRouter } from 'next/navigation'
 import Header from '@/components/Header'
 import { useData } from '@/lib/context/DataContext'
 import { EVRecord } from '@/lib/types/ev'
-import { uploadCsvJson } from '@/lib/actions/uploadCsv'
+import { upload } from '@vercel/blob/client'
 
 const EXPECTED_HEADERS = [
   'VIN (1-10)',
@@ -30,30 +30,21 @@ const EXPECTED_HEADERS = [
 
 export default function HomePage() {
   const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
   const { setFileMeta } = useData()
-  const initialState = {
-    hash: '',
-    existed: false,
-    filePath: '',
-  }
-  const [state, action, pending] = useActionState(uploadCsvJson, initialState)
   const router = useRouter()
-
-  // ✅ React to state updates after action runs
-  useEffect(() => {
-    if (state.hash) {
-      setFileMeta(state)
-      router.push('/info')
-    }
-  }, [state, setFileMeta, router])
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
 
-    Papa.parse(file, {
+    setLoading(true)
+
+    Papa.parse<EVRecord>(file, {
       header: true,
-      complete: (result: Papa.ParseResult<EVRecord>) => {
+      skipEmptyLines: true,
+      complete: async (result) => {
         const uploadedHeaders = result.meta.fields || []
 
         const isValid =
@@ -64,14 +55,49 @@ export default function HomePage() {
           setError(
             '❌ Invalid CSV format. Please upload the correct EV dataset.'
           )
-        } else {
-          setError(null)
-          startTransition(() => {
-            const formData = new FormData()
-            formData.append('file', file)
-            action(formData)
-          })
+          setLoading(false)
+          return
         }
+
+        try {
+          setError(null)
+
+          // ✅ Convert parsed rows into JSON file (Blob)
+          const jsonBlob = new Blob([JSON.stringify(result.data)], {
+            type: 'application/json',
+          })
+
+          // ✅ Upload JSON to Vercel Blob
+          const blob = await upload(
+            `projects/ev_dataset/${file.name.replace('.csv', '.json')}`,
+            jsonBlob,
+            {
+              access: 'public',
+              handleUploadUrl: '/api/uploads',
+              onUploadProgress: (progress) => {
+                setUploadProgress(progress.percentage)
+              },
+            }
+          )
+
+          // ✅ Save metadata to context (store blob.url instead of raw data to avoid quota issues)
+          setFileMeta({
+            hash: Date.now().toString(), // simple unique id
+            existed: false,
+            filePath: blob.url, // use blob url for fetching later
+          })
+
+          router.push('/info')
+        } catch (err) {
+          console.error(err)
+          setError('❌ Failed to upload file.')
+        } finally {
+          setLoading(false)
+        }
+      },
+      error: () => {
+        setError('❌ Failed to parse the CSV file.')
+        setLoading(false)
       },
     })
   }
@@ -98,9 +124,11 @@ export default function HomePage() {
             className="border border-gray-300 p-2 rounded w-full mb-4 cursor-pointer text-sm"
           />
 
-          {pending && (
+          {loading && (
             <p className="text-blue-500 animate-pulse">
-              Uploading and processing...
+              {uploadProgress > 0
+                ? `Uploading... ${uploadProgress.toFixed(0)}%`
+                : 'Parsing and processing...'}
             </p>
           )}
           {error && <p className="text-red-500 mt-2">{error}</p>}

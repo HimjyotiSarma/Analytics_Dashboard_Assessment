@@ -18,8 +18,8 @@ export interface EVRecord {
   '2020 Census Tract': number
 }
 
-export interface FileMeta {
+export type FileMeta = {
   hash: string
   existed: boolean
-  filePath: string
+  filePath: string // parsed rows instead of filePath
 }

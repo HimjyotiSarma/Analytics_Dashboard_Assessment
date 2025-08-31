@@ -18,23 +18,27 @@ export default function InfoPage() {
   const [showSidebar, setShowSidebar] = useState(false)
   const [showMobileNotice, setShowMobileNotice] = useState(false)
 
+  // ✅ Detect mobile and show popup
   useEffect(() => {
-    // Detect mobile and show popup
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
       setShowMobileNotice(true)
     }
   }, [])
 
+  // ✅ Fetch dataset JSON from blob URL
   useEffect(() => {
     if (fileMeta?.filePath) {
       setLoading(true)
       fetch(fileMeta.filePath)
         .then((res) => res.json())
-        .then((data) => {
+        .then((data: EVRecord[]) => {
           setRecords(data)
           setLoading(false)
         })
-        .catch(() => setLoading(false))
+        .catch((err) => {
+          console.error('Failed to fetch dataset:', err)
+          setLoading(false)
+        })
     }
   }, [fileMeta])
 
@@ -63,6 +67,7 @@ export default function InfoPage() {
         </div>
       )}
 
+      {/* Mobile header */}
       <div className="flex items-center justify-between px-4 py-2 md:hidden border-b">
         <h1 className="text-lg font-semibold">Dataset Insights</h1>
         <button

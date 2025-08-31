@@ -19,19 +19,27 @@ export function DataContextProvider({
   const [fileMeta, setFileMeta] = useState<FileMeta | undefined>(undefined)
   const [isHydrating, setIsHydrating] = useState(true)
 
-  // Hydrate from Local Storage
+  // ✅ Hydrate only the small metadata (NOT the whole dataset)
   useEffect(() => {
-    const storedData = localStorage.getItem('fileMetaContext')
-    if (storedData) {
-      console.log('Stored Data: ', JSON.parse(storedData))
-      setFileMeta(JSON.parse(storedData))
+    try {
+      const storedData = localStorage.getItem('fileMetaContext')
+      if (storedData) {
+        setFileMeta(JSON.parse(storedData))
+      }
+    } catch (err) {
+      console.warn('Failed to load fileMetaContext from localStorage:', err)
+    } finally {
       setIsHydrating(false)
     }
   }, [])
 
   useEffect(() => {
     if (fileMeta) {
-      localStorage.setItem('fileMetaContext', JSON.stringify(fileMeta))
+      try {
+        localStorage.setItem('fileMetaContext', JSON.stringify(fileMeta))
+      } catch (err) {
+        console.warn('Failed to store fileMetaContext in localStorage:', err)
+      }
     }
   }, [fileMeta])
 
