@@ -1,7 +1,7 @@
 # EV Analytics Dashboard (Next.js)
 
 A lightweight, client-first analytics UI for exploring the **Electric Vehicle Population** CSV.  
-Upload a CSV, we validate the schema client-side, persist minimal metadata, and render interactive charts with Recharts. The backend (Go/Fiber + DB) can be added later—this README focuses on the frontend.
+Upload a CSV, we validate the schema client-side, persist minimal metadata, and render interactive charts with Recharts.
 
 ---
 
