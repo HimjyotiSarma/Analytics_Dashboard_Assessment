@@ -13,6 +13,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         // ✅ Only allow JSON uploads
         return {
           allowedContentTypes: ['application/json'],
+          allowOverwrite: true,
           addRandomSuffix: true,
           tokenPayload: JSON.stringify({
             uploadedAt: new Date().toISOString(),
